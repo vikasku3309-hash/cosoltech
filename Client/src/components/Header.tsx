@@ -1,8 +1,26 @@
-import { Phone, Mail, Facebook, Instagram, Twitter, Shield } from "lucide-react";
+import { Phone, Mail, Facebook, Instagram, Twitter, Shield, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
 
 const Header = () => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const navigationLinks = [
+    { href: "/", text: "Home" },
+    { href: "/#about", text: "About Us" },
+    { href: "/#services", text: "Our Services" },
+    { href: "/job-apply", text: "Job Apply Form" },
+    { href: "/#contact", text: "Contact Us" },
+    { href: "/finance", text: "FINANCE" },
+    { href: "/delivery-riders", text: "DELIVERY RIDERS" },
+    { href: "/what-we-do", text: "What We Do" }
+  ];
+
   return (
     <>
       {/* Top Bar */}
@@ -71,16 +89,7 @@ const Header = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6, duration: 0.8 }}
           >
-            {[
-              { href: "/", text: "Home" },
-              { href: "/#about", text: "About Us" },
-              { href: "/#services", text: "Our Services" },
-              { href: "/job-apply", text: "Job Apply Form" },
-              { href: "/#contact", text: "Contact Us" },
-              { href: "/finance", text: "FINANCE" },
-              { href: "/delivery-riders", text: "DELIVERY RIDERS" },
-              { href: "/what-we-do", text: "What We Do" }
-            ].map((link, index) => (
+            {navigationLinks.map((link, index) => (
               <motion.a 
                 key={link.href}
                 href={link.href} 
@@ -113,10 +122,61 @@ const Header = () => {
                 <span>Admin</span>
               </a>
             </Button>
-            <Button className="lg:hidden hover:scale-105 transition-transform duration-300">Menu</Button>
+            <Button 
+              onClick={toggleMobileMenu}
+              className="lg:hidden hover:scale-105 transition-transform duration-300"
+              variant="ghost"
+              size="sm"
+            >
+              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
           </motion.div>
         </div>
       </motion.nav>
+
+      {/* Mobile Navigation Menu */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="lg:hidden bg-background border-b shadow-lg overflow-hidden"
+          >
+            <div className="container mx-auto px-4 py-4">
+              <nav className="flex flex-col space-y-4">
+                {navigationLinks.map((link, index) => (
+                  <motion.a
+                    key={link.href}
+                    href={link.href}
+                    className="text-foreground hover:text-primary transition-colors duration-300 py-2 px-4 rounded-md hover:bg-primary/10"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1, duration: 0.3 }}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {link.text}
+                  </motion.a>
+                ))}
+                
+                {/* Mobile Admin Button */}
+                <motion.a
+                  href="/admin/login"
+                  className="flex items-center space-x-2 text-foreground hover:text-primary transition-colors duration-300 py-2 px-4 rounded-md hover:bg-primary/10 border border-primary/20"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: navigationLinks.length * 0.1, duration: 0.3 }}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <Shield className="h-4 w-4" />
+                  <span>Admin Login</span>
+                </motion.a>
+              </nav>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 };
