@@ -53,9 +53,9 @@ const AdminDashboard = () => {
       }
 
       const [dashboardResponse, contactsResponse, applicationsResponse] = await Promise.all([
-        api.get('/admin/dashboard/stats'),
-        api.get(endpoints.contact.getAll + '?limit=20'),
-        api.get(endpoints.jobApplications.getAll + '?limit=20')
+        api.get(endpoints.admin.dashboardStats),
+        api.get(endpoints.admin.contacts + '?limit=20'),
+        api.get(endpoints.admin.applications + '?limit=20')
       ]);
 
       setStats(dashboardResponse.data.stats);

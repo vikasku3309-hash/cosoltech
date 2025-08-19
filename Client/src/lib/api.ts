@@ -58,6 +58,9 @@ export const endpoints = {
   // Admin endpoints
   admin: {
     dashboard: '/admin/dashboard',
+    dashboardStats: '/admin/dashboard/stats',
+    contacts: '/admin/contacts',
+    applications: '/admin/applications',
   },
 };
 
