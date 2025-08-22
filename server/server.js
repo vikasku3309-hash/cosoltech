@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import { rateLimit } from 'express-rate-limit';
 
 // Import routes
-import authRoutes from './routes/auth.js';
+import authRoutes from process.env.NODE_ENV === 'production' ? './routes/auth.js' : './routes/auth-dev.js';
 import contactRoutes from './routes/contact.js';
 import jobApplicationRoutes from './routes/jobApplication.js';
 import adminRoutes from './routes/admin.js';
@@ -20,19 +20,58 @@ const limiter = rateLimit({
   max: 100 // limit each IP to 100 requests per windowMs
 });
 
+// CORS configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:8080',
+      'http://localhost:8081',
+      'http://localhost:8082',
+      'https://cosoltech.in',
+      'https://www.cosoltech.in',
+      'https://cosoltech.vercel.app',
+      'https://backend.cosoltech.in',
+      process.env.CLIENT_URL
+    ].filter(Boolean);
+    
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error(`Origin ${origin} not allowed by CORS policy`));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Authorization'],
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+};
+
 // Middleware
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true
-}));
+app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
+
+// CORS debugging middleware
+app.use((req, res, next) => {
+  console.log('Request origin:', req.headers.origin);
+  console.log('Request method:', req.method);
+  console.log('Request headers:', req.headers);
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/api/', limiter);
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/complete_solution_tech')
-  .then(() => console.log('MongoDB connected successfully'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// Connect to MongoDB (commented out for development without MongoDB)
+// mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/complete_solution_tech')
+//   .then(() => console.log('MongoDB connected successfully'))
+//   .catch(err => console.error('MongoDB connection error:', err));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -45,9 +84,34 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
+// CORS test endpoint
+app.get('/api/cors-test', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'CORS is working!',
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
+  
+  // Handle CORS errors specifically
+  if (err.message && err.message.includes('CORS')) {
+    return res.status(403).json({
+      message: 'CORS Error',
+      error: err.message,
+      allowedOrigins: [
+        'https://cosoltech.in',
+        'https://www.cosoltech.in',
+        'https://cosoltech.vercel.app',
+        'https://backend.cosoltech.in'
+      ]
+    });
+  }
+  
   res.status(500).json({ 
     message: 'Something went wrong!',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
