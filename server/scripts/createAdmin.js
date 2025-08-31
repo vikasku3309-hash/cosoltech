@@ -26,7 +26,7 @@ async function createFirstAdmin() {
     await admin.save();
     console.log('First admin created successfully!');
     console.log('Username: admin');
-    console.log('Password: admin123');
+    console.log('Password: Viekaysh@123');
     console.log('Please change the password after first login!');
     
   } catch (error) {

@@ -79,6 +79,7 @@ const AdminLogin = () => {
                     type="text"
                     placeholder="Enter your username"
                     className="pl-10"
+                    autoComplete="username"
                     value={formData.username}
                     onChange={(e) => setFormData({...formData, username: e.target.value})}
                     required
@@ -95,6 +96,7 @@ const AdminLogin = () => {
                     type="password"
                     placeholder="Enter your password"
                     className="pl-10"
+                    autoComplete="current-password"
                     value={formData.password}
                     onChange={(e) => setFormData({...formData, password: e.target.value})}
                     required

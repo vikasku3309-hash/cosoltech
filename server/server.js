@@ -17,16 +17,16 @@ async function initializeServer() {
   // Import auth routes based on environment
   let authRoutes;
   try {
-    if (process.env.NODE_ENV === 'development') {
-      const authModule = await import('./routes/auth.js');
+    if (process.env.NODE_ENV === 'production') {
+      const authModule = await import('./routes/auth-dev.js');
       authRoutes = authModule.default;
     } else {
-      const authModule = await import('./routes/auth-dev.js');
+      const authModule = await import('./routes/auth.js');
       authRoutes = authModule.default;
     }
   } catch (error) {
     console.error('Error importing auth routes:', error);
-    // Fallback to development routes
+    // Fallback to main auth routes
     const authModule = await import('./routes/auth.js');
     authRoutes = authModule.default;
   }

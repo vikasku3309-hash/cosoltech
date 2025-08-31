@@ -15,22 +15,35 @@ const validateLogin = [
 // Admin login
 router.post('/login', validateLogin, async (req, res) => {
   try {
+    // Check if JWT_SECRET is configured
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET environment variable is not set');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ 
+        message: 'Validation error',
+        errors: errors.array() 
+      });
     }
 
     const { username, password } = req.body;
+    
+    console.log('Login attempt for username:', username);
 
     // Find admin
     const admin = await Admin.findOne({ username, isActive: true });
     if (!admin) {
+      console.log('Admin not found or inactive:', username);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Check password
     const isMatch = await admin.comparePassword(password);
     if (!isMatch) {
+      console.log('Password mismatch for admin:', username);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
@@ -45,6 +58,8 @@ router.post('/login', validateLogin, async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    console.log('Login successful for admin:', username);
+
     res.json({
       token,
       admin: {
@@ -56,7 +71,10 @@ router.post('/login', validateLogin, async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
