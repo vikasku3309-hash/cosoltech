@@ -11,7 +11,7 @@ const router = express.Router();
 router.post('/submit', uploadSingle, handleUploadError, [
   body('fullName').trim().isLength({ min: 2 }).withMessage('Full name must be at least 2 characters long'),
   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
-  body('phone').trim().isLength({ min: 10 }).withMessage('Phone number must be at least 10 characters long'),
+  body('phone').trim().matches(/[\d\+\-\s\(\)]{10,}/).withMessage('Please provide a valid phone number'),
   body('position').trim().isLength({ min: 2 }).withMessage('Position must be at least 2 characters long'),
   body('experience').trim().isLength({ min: 1 }).withMessage('Experience must be selected'),
   body('coverLetter').optional().trim().isLength({ min: 10 }).withMessage('Cover letter must be at least 10 characters long')
