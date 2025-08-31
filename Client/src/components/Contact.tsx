@@ -25,12 +25,30 @@ const Contact = () => {
     setIsSubmitting(true);
 
     try {
-      await api.post(endpoints.contact.submit, formData);
+      // Sanitize phone number for production server compatibility
+      // Only include phone if it has at least 10 digits
+      const sanitizedPhone = formData.phone ? formData.phone.replace(/[^\d]/g, '') : '';
       
-      toast({
-        title: "Message Sent!",
-        description: "Thank you for contacting us. We'll get back to you soon."
-      });
+      // Prepare data - exclude phone if too short or empty
+      const submitData = {
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message,
+        ...(sanitizedPhone.length >= 10 && { phone: sanitizedPhone })
+      };
+
+      const response = await api.post(endpoints.contact.submit, submitData);
+      
+      // Check if response indicates success
+      if (response.data?.success !== false) {
+        toast({
+          title: "Message Sent!",
+          description: "Thank you for contacting us. We'll get back to you soon."
+        });
+      } else {
+        throw new Error(response.data?.message || 'Failed to send message');
+      }
 
       // Reset form
       setFormData({
@@ -41,9 +59,10 @@ const Contact = () => {
         message: ""
       });
     } catch (error: any) {
+      console.error('Contact form error:', error);
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to send message. Please try again.",
+        description: error.response?.data?.message || error.response?.data?.errors?.[0]?.msg || "Failed to send message. Please try again.",
         variant: "destructive"
       });
     } finally {

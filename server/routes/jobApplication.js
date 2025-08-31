@@ -26,6 +26,14 @@ router.post('/submit', uploadSingle, handleUploadError, [
     }
 
     const { fullName, email, phone, position, experience, coverLetter } = req.body;
+    
+    console.log('Job application submission attempt:', { fullName, email, phone, position, experience });
+
+    // Check if JobApplication model is available
+    if (!JobApplication) {
+      console.error('JobApplication model is not available');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
 
     // Process resume file if uploaded
     let resume = null;
@@ -49,15 +57,33 @@ router.post('/submit', uploadSingle, handleUploadError, [
       resume
     });
 
+    console.log('Attempting to save job application to database...');
     await application.save();
+    console.log('Job application saved successfully:', application._id);
 
     res.status(201).json({ 
+      success: true,
       message: 'Job application submitted successfully',
       applicationId: application._id
     });
   } catch (error) {
     console.error('Job application submission error:', error);
-    res.status(500).json({ message: 'Failed to submit job application' });
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
+    
+    // Return more specific error information in development
+    const errorMessage = process.env.NODE_ENV === 'development' 
+      ? `Failed to submit job application: ${error.message}`
+      : 'Failed to submit job application';
+      
+    res.status(500).json({ 
+      success: false,
+      message: errorMessage,
+      ...(process.env.NODE_ENV === 'development' && { error: error.message })
+    });
   }
 });
 

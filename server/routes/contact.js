@@ -25,24 +25,50 @@ router.post('/submit', [
     }
 
     const { name, email, subject, message, phone } = req.body;
+    
+    console.log('Contact form submission attempt:', { name, email, subject, message: message?.length, phone });
+
+    // Check if Contact model is available
+    if (!Contact) {
+      console.error('Contact model is not available');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
 
     const contact = new Contact({
       name,
       email,
       subject,
       message,
-      phone
+      phone: phone || undefined // Only include phone if provided
     });
 
+    console.log('Attempting to save contact to database...');
     await contact.save();
+    console.log('Contact saved successfully:', contact._id);
 
     res.status(201).json({ 
+      success: true,
       message: 'Contact form submitted successfully',
       contactId: contact._id
     });
   } catch (error) {
     console.error('Contact submission error:', error);
-    res.status(500).json({ message: 'Failed to submit contact form' });
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
+    
+    // Return more specific error information in development
+    const errorMessage = process.env.NODE_ENV === 'development' 
+      ? `Failed to submit contact form: ${error.message}`
+      : 'Failed to submit contact form';
+      
+    res.status(500).json({ 
+      success: false,
+      message: errorMessage,
+      ...(process.env.NODE_ENV === 'development' && { error: error.message })
+    });
   }
 });
 

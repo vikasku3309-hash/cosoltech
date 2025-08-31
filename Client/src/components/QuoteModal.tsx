@@ -30,7 +30,20 @@ const QuoteModal = ({ isOpen, onClose }: QuoteModalProps) => {
     setIsSubmitting(true);
 
     try {
-      await api.post(endpoints.contact.submit, formData);
+      // Sanitize phone number for production server compatibility
+      // Only include phone if it has at least 10 digits
+      const sanitizedPhone = formData.phone ? formData.phone.replace(/[^\d]/g, '') : '';
+      
+      // Prepare data - exclude phone if too short or empty
+      const submitData = {
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: `Address: ${formData.address}\n\n${formData.message}`,
+        ...(sanitizedPhone.length >= 10 && { phone: sanitizedPhone })
+      };
+
+      await api.post(endpoints.contact.submit, submitData);
       
       toast({
         title: "Quote Request Sent!",
@@ -48,9 +61,10 @@ const QuoteModal = ({ isOpen, onClose }: QuoteModalProps) => {
       });
       onClose();
     } catch (error: any) {
+      console.error('Quote form error:', error);
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to send quote request. Please try again.",
+        description: error.response?.data?.message || error.response?.data?.errors?.[0]?.msg || "Failed to send quote request. Please try again.",
         variant: "destructive"
       });
     } finally {

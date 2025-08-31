@@ -33,12 +33,15 @@ const DeliveryJobModal = ({ isOpen, onClose }: DeliveryJobModalProps) => {
     setIsSubmitting(true);
 
     try {
+      // Sanitize phone number for production server compatibility
+      const sanitizedPhone = formData.phone ? formData.phone.replace(/[^\d]/g, '') : '';
+      
       // For now, we'll submit without file upload
       // In production, you'd need to implement file upload to cloud storage
       const submitData = {
         fullName: formData.fullName,
         email: formData.email,
-        phone: formData.phone,
+        phone: sanitizedPhone,
         position: formData.position,
         experience: formData.experience,
         coverLetter: formData.coverLetter
@@ -63,9 +66,10 @@ const DeliveryJobModal = ({ isOpen, onClose }: DeliveryJobModalProps) => {
       });
       onClose();
     } catch (error: any) {
+      console.error('Job application error:', error);
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to submit application. Please try again.",
+        description: error.response?.data?.message || error.response?.data?.errors?.[0]?.msg || "Failed to submit application. Please try again.",
         variant: "destructive"
       });
     } finally {
