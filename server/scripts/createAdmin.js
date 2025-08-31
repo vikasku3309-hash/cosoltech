@@ -18,8 +18,8 @@ async function createFirstAdmin() {
     // Create first admin
     const admin = new Admin({
       username: 'admin',
-      email: 'admin@completesolutiontech.com',
-      password: 'admin123', // Change this in production!
+      email: 'info.cosoltech@gmail.com',
+      password: 'Viekaysh@123', // Change this in production!
       role: 'super_admin'
     });
 

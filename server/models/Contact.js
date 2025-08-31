@@ -30,6 +30,34 @@ const contactSchema = new mongoose.Schema({
     enum: ['new', 'read', 'replied', 'archived'],
     default: 'new'
   },
+  // Reply tracking
+  replies: [{
+    message: {
+      type: String,
+      required: true
+    },
+    attachments: [{
+      filename: String,
+      originalName: String,
+      contentType: String,
+      size: {
+        type: Number,
+        max: 200000 // 200KB limit
+      },
+      data: Buffer // BSON binary data
+    }],
+    sentBy: {
+      type: String,
+      required: true
+    },
+    sentAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  lastRepliedAt: {
+    type: Date
+  },
   createdAt: {
     type: Date,
     default: Date.now

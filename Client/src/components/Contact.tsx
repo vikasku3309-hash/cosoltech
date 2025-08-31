@@ -2,10 +2,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Phone, Mail, MapPin } from "lucide-react";
+import { Phone, Mail, MapPin, Calculator } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { api, endpoints } from "@/lib/api";
+import QuoteModal from "./QuoteModal";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -16,6 +17,7 @@ const Contact = () => {
     message: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,6 +64,16 @@ const Contact = () => {
         <div className="text-center mb-16 animate-fade-in">
           <h2 className="text-4xl font-bold text-primary mb-4">Contact Us</h2>
           <p className="text-lg text-muted-foreground">Get in touch with our team for any queries or assistance</p>
+          <div className="mt-6">
+            <Button 
+              onClick={() => setIsQuoteModalOpen(true)}
+              size="lg"
+              className="hover-scale bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            >
+              <Calculator className="h-5 w-5 mr-2" />
+              Get Quote
+            </Button>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-12">
@@ -157,6 +169,12 @@ const Contact = () => {
             </form>
           </Card>
         </div>
+
+        {/* Quote Modal */}
+        <QuoteModal 
+          isOpen={isQuoteModalOpen} 
+          onClose={() => setIsQuoteModalOpen(false)} 
+        />
       </div>
     </section>
   );

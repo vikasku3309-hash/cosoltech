@@ -6,13 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Bike, MapPin, Clock, Star, Shield, Zap, Users, Trophy } from "lucide-react";
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import DeliveryJobModal from "@/components/DeliveryJobModal";
 
 const DeliveryRiders = () => {
   const benefitsRef = useRef(null);
   const statsRef = useRef(null);
   const benefitsInView = useInView(benefitsRef, { once: true, margin: "-100px" });
   const statsInView = useInView(statsRef, { once: true, margin: "-100px" });
+  const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const benefits = [
     {
       icon: Clock,
@@ -96,11 +98,22 @@ const DeliveryRiders = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.8, duration: 0.5 }}
                 >
-                  <Button size="lg" className="hover:scale-105 transition-transform duration-300">
+                  <Button 
+                    size="lg" 
+                    className="hover:scale-105 transition-transform duration-300"
+                    onClick={() => setIsJobModalOpen(true)}
+                  >
                     <Bike className="mr-2 h-5 w-5" />
                     Join Now
                   </Button>
-                  <Button variant="outline" size="lg" className="hover:scale-105 transition-transform duration-300">
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="hover:scale-105 transition-transform duration-300"
+                    onClick={() => {
+                      document.getElementById('benefits')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                  >
                     Learn More
                   </Button>
                 </motion.div>
@@ -171,7 +184,7 @@ const DeliveryRiders = () => {
         </section>
 
         {/* Benefits Section */}
-        <section className="py-20 bg-muted/30" ref={benefitsRef}>
+        <section id="benefits" className="py-20 bg-muted/30" ref={benefitsRef}>
           <div className="container mx-auto px-4">
             <motion.div 
               className="text-center mb-16"
@@ -259,7 +272,12 @@ const DeliveryRiders = () => {
                     <span>Start delivering and earning!</span>
                   </div>
                 </div>
-                <Button className="w-full mt-6 hover-scale">Apply Now</Button>
+                <Button 
+                  className="w-full mt-6 hover-scale"
+                  onClick={() => setIsJobModalOpen(true)}
+                >
+                  Apply Now
+                </Button>
               </Card>
             </div>
           </div>
@@ -273,7 +291,12 @@ const DeliveryRiders = () => {
             <p className="text-xl mb-8 opacity-90">
               Thousands of riders have already transformed their lives with us. You could be next!
             </p>
-            <Button size="lg" variant="secondary" className="hover-scale">
+            <Button 
+              size="lg" 
+              variant="secondary" 
+              className="hover-scale"
+              onClick={() => setIsJobModalOpen(true)}
+            >
               <MapPin className="mr-2 h-5 w-5" />
               Start Your Journey
             </Button>
@@ -282,6 +305,12 @@ const DeliveryRiders = () => {
       </main>
       
       <Footer />
+      
+      {/* Delivery Job Application Modal */}
+      <DeliveryJobModal 
+        isOpen={isJobModalOpen} 
+        onClose={() => setIsJobModalOpen(false)} 
+      />
     </div>
   );
 };

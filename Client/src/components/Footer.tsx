@@ -1,6 +1,24 @@
 import { Phone, Mail, Facebook, Instagram, Twitter, MapPin } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Footer = () => {
+  const navigate = useNavigate();
+
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleNavigation = (path: string) => {
+    if (path.startsWith('#')) {
+      scrollToSection(path.substring(1));
+    } else {
+      navigate(path);
+    }
+  };
+
   return (
     <footer className="bg-primary text-primary-foreground py-12">
       <div className="container mx-auto px-4">
@@ -14,9 +32,23 @@ const Footer = () => {
               account openings, and hiring support.
             </p>
             <div className="flex space-x-4">
-              <Facebook className="h-5 w-5 cursor-pointer hover:opacity-75" />
-              <Instagram className="h-5 w-5 cursor-pointer hover:opacity-75" />
-              <Twitter className="h-5 w-5 cursor-pointer hover:opacity-75" />
+              <a 
+                href="https://facebook.com/cosoltech" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:scale-110 transition-transform"
+              >
+                <Facebook className="h-5 w-5 cursor-pointer hover:opacity-75" />
+              </a>
+              <a 
+                href="https://www.instagram.com/completesolutiontechnology?igsh=NGJldDRubXVsNGs=" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:scale-110 transition-transform"
+              >
+                <Instagram className="h-5 w-5 cursor-pointer hover:opacity-75" />
+              </a>
+              <Twitter className="h-5 w-5 cursor-pointer hover:opacity-75 hover:scale-110 transition-transform" />
             </div>
           </div>
 
@@ -24,10 +56,46 @@ const Footer = () => {
           <div>
             <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="#" className="hover:opacity-75">Home</a></li>
-              <li><a href="#about" className="hover:opacity-75">About Us</a></li>
-              <li><a href="#services" className="hover:opacity-75">Our Services</a></li>
-              <li><a href="#contact" className="hover:opacity-75">Contact Us</a></li>
+              <li>
+                <button 
+                  onClick={() => handleNavigation('/')} 
+                  className="hover:opacity-75 hover:underline transition-all text-left"
+                >
+                  Home
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavigation('#about')} 
+                  className="hover:opacity-75 hover:underline transition-all text-left"
+                >
+                  About Us
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavigation('#services')} 
+                  className="hover:opacity-75 hover:underline transition-all text-left"
+                >
+                  Our Services
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavigation('#contact')} 
+                  className="hover:opacity-75 hover:underline transition-all text-left"
+                >
+                  Contact Us
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavigation('/delivery-riders')} 
+                  className="hover:opacity-75 hover:underline transition-all text-left"
+                >
+                  Join as Delivery Partner
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -35,10 +103,38 @@ const Footer = () => {
           <div>
             <h4 className="text-lg font-semibold mb-4">Our Services</h4>
             <ul className="space-y-2 text-sm">
-              <li>QR Onboarding</li>
-              <li>Account Opening</li>
-              <li>Delivery Partners Hiring</li>
-              <li>Financial Services</li>
+              <li>
+                <button 
+                  onClick={() => handleNavigation('/finance')} 
+                  className="hover:opacity-75 hover:underline transition-all text-left"
+                >
+                  QR Onboarding & Finance
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavigation('#services')} 
+                  className="hover:opacity-75 hover:underline transition-all text-left"
+                >
+                  Account Opening
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavigation('/delivery-riders')} 
+                  className="hover:opacity-75 hover:underline transition-all text-left"
+                >
+                  Delivery Partners Hiring
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => handleNavigation('/finance')} 
+                  className="hover:opacity-75 hover:underline transition-all text-left"
+                >
+                  Financial Services
+                </button>
+              </li>
             </ul>
           </div>
 

@@ -49,7 +49,9 @@ export const endpoints = {
   contact: {
     submit: '/contact/submit',
     getAll: '/contact/all',
+    getById: (id: string) => `/contact/${id}`,
     updateStatus: (id: string) => `/contact/${id}/status`,
+    reply: (id: string) => `/contact/${id}/reply`,
   },
   // Job application endpoints
   jobApplications: {
@@ -57,6 +59,7 @@ export const endpoints = {
     getAll: '/job-applications/all',
     getById: (id: string) => `/job-applications/${id}`,
     updateStatus: (id: string) => `/job-applications/${id}/status`,
+    reply: (id: string) => `/job-applications/${id}/reply`,
   },
   // Admin endpoints
   admin: {
@@ -64,6 +67,8 @@ export const endpoints = {
     dashboardStats: '/admin/dashboard/stats',
     contacts: '/admin/contacts',
     applications: '/admin/applications',
+    files: '/admin/files',
+    fileStats: '/admin/files/stats',
   },
 };
 

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <text x="10" y="35" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#ED1C24">
+    KOTAK
+  </text>
+  <circle cx="170" cy="30" r="15" fill="#ED1C24"/>
+  <polygon points="165,25 175,25 170,35" fill="white"/>
+</svg>

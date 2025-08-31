@@ -1,30 +1,31 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Contact from '../models/Contact.js';
-import { sendEmailNotification } from '../utils/emailService.js';
+import { sendReplyEmail } from '../utils/emailService.js';
+import { authenticateAdmin } from '../middleware/auth.js';
+import { uploadMultiple, handleUploadError } from '../middleware/fileUpload.js';
 
 const router = express.Router();
 
-// Validation middleware
-const validateContact = [
-  body('name').notEmpty().trim().isLength({ min: 2, max: 100 }),
-  body('email').isEmail().normalizeEmail(),
-  body('subject').notEmpty().trim().isLength({ min: 3, max: 200 }),
-  body('message').notEmpty().trim().isLength({ min: 10, max: 5000 }),
-  body('phone').optional().isMobilePhone()
-];
-
 // Submit contact form
-router.post('/submit', validateContact, async (req, res) => {
+router.post('/submit', [
+  body('name').trim().isLength({ min: 2 }).withMessage('Name must be at least 2 characters long'),
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
+  body('subject').trim().isLength({ min: 5 }).withMessage('Subject must be at least 5 characters long'),
+  body('message').trim().isLength({ min: 10 }).withMessage('Message must be at least 10 characters long'),
+  body('phone').optional().trim()
+], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ 
+        message: 'Validation failed', 
+        errors: errors.array() 
+      });
     }
 
     const { name, email, subject, message, phone } = req.body;
 
-    // Save to database
     const contact = new Contact({
       name,
       email,
@@ -35,73 +36,159 @@ router.post('/submit', validateContact, async (req, res) => {
 
     await contact.save();
 
-    // Send email notification to admin
-    await sendEmailNotification({
-      to: process.env.ADMIN_EMAIL,
-      subject: `New Contact Form Submission: ${subject}`,
-      html: `
-        <h2>New Contact Form Submission</h2>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Phone:</strong> ${phone || 'Not provided'}</p>
-        <p><strong>Subject:</strong> ${subject}</p>
-        <p><strong>Message:</strong></p>
-        <p>${message}</p>
-      `
-    });
-
-    // Send confirmation email to user
-    await sendEmailNotification({
-      to: email,
-      subject: 'Thank you for contacting Complete Solution Technology',
-      html: `
-        <h2>Thank you for reaching out!</h2>
-        <p>Dear ${name},</p>
-        <p>We have received your message and will get back to you within 24-48 hours.</p>
-        <p>Best regards,<br>Complete Solution Technology Team</p>
-      `
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Your message has been sent successfully!'
+    res.status(201).json({ 
+      message: 'Contact form submitted successfully',
+      contactId: contact._id
     });
   } catch (error) {
-    console.error('Contact form error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to submit contact form. Please try again.'
-    });
+    console.error('Contact submission error:', error);
+    res.status(500).json({ message: 'Failed to submit contact form' });
   }
 });
 
-// Get all contacts (admin only - add auth middleware in production)
-router.get('/all', async (req, res) => {
+// Get all contacts (admin only)
+router.get('/all', authenticateAdmin, async (req, res) => {
   try {
-    const contacts = await Contact.find().sort({ createdAt: -1 });
-    res.json(contacts);
+    const { limit = 50, status, page = 1 } = req.query;
+    const skip = (page - 1) * limit;
+    
+    let query = {};
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+    
+    const contacts = await Contact.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    const total = await Contact.countDocuments(query);
+    
+    res.json({
+      contacts,
+      total,
+      page: parseInt(page),
+      totalPages: Math.ceil(total / limit)
+    });
   } catch (error) {
+    console.error('Get contacts error:', error);
     res.status(500).json({ message: 'Failed to fetch contacts' });
   }
 });
 
-// Update contact status
-router.patch('/:id/status', async (req, res) => {
+// Get single contact (admin only)
+router.get('/:id', authenticateAdmin, async (req, res) => {
   try {
+    const contact = await Contact.findById(req.params.id);
+    if (!contact) {
+      return res.status(404).json({ message: 'Contact not found' });
+    }
+    res.json({ contact });
+  } catch (error) {
+    console.error('Get contact error:', error);
+    res.status(500).json({ message: 'Failed to fetch contact' });
+  }
+});
+
+// Update contact status (admin only)
+router.patch('/:id/status', authenticateAdmin, [
+  body('status').isIn(['new', 'read', 'replied', 'archived']).withMessage('Invalid status')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        message: 'Validation failed', 
+        errors: errors.array() 
+      });
+    }
+
     const { status } = req.body;
     const contact = await Contact.findByIdAndUpdate(
       req.params.id,
       { status },
       { new: true }
     );
+
+    if (!contact) {
+      return res.status(404).json({ message: 'Contact not found' });
+    }
+
+    res.json({ 
+      message: 'Contact status updated successfully',
+      contact
+    });
+  } catch (error) {
+    console.error('Update contact status error:', error);
+    res.status(500).json({ message: 'Failed to update contact status' });
+  }
+});
+
+// Reply to contact with file attachments (admin only)
+router.post('/:id/reply', authenticateAdmin, uploadMultiple, handleUploadError, [
+  body('message').trim().isLength({ min: 10 }).withMessage('Reply message must be at least 10 characters long')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        message: 'Validation failed', 
+        errors: errors.array() 
+      });
+    }
+
+    const { message } = req.body;
+    const contact = await Contact.findById(req.params.id);
     
     if (!contact) {
       return res.status(404).json({ message: 'Contact not found' });
     }
-    
-    res.json(contact);
+
+    // Process uploaded files to MongoDB format
+    const attachments = [];
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        if (file.buffer.length <= 200000) { // 200KB limit
+          attachments.push({
+            filename: file.originalname,
+            originalName: file.originalname,
+            contentType: file.mimetype,
+            size: file.buffer.length,
+            data: file.buffer
+          });
+        }
+      }
+    }
+
+    // Send reply email
+    await sendReplyEmail({
+      to: contact.email,
+      subject: contact.subject,
+      message,
+      attachments,
+      replyTo: contact.message
+    });
+
+    // Update contact with reply
+    const reply = {
+      message,
+      attachments,
+      sentBy: 'admin',
+      sentAt: new Date()
+    };
+
+    contact.replies.push(reply);
+    contact.status = 'replied';
+    contact.lastRepliedAt = new Date();
+    await contact.save();
+
+    res.json({ 
+      message: 'Reply sent successfully',
+      contact
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Failed to update contact status' });
+    console.error('Send reply error:', error);
+    res.status(500).json({ message: 'Failed to send reply' });
   }
 });
 

@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { CreditCard, Building, Users, Smartphone } from "lucide-react";
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import QuoteModal from "./QuoteModal";
 
 const Services = () => {
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const servicesRef = useRef(null);
   const detailsRef = useRef(null);
   const servicesInView = useInView(servicesRef, { once: true, margin: "-100px" });
@@ -97,7 +99,7 @@ const Services = () => {
                 </CardHeader>
                 <CardContent>
                   <CardDescription className="mb-4">{service.description}</CardDescription>
-                  <Button variant="outline" className="hover:scale-105 transition-transform duration-300">Get Quote</Button>
+                  <Button  onClick={() => setIsQuoteModalOpen(true)} variant="outline" className="hover:scale-105 transition-transform duration-300">Get Quote</Button>
                 </CardContent>
               </Card>
             </motion.div>
@@ -149,6 +151,14 @@ const Services = () => {
             </motion.div>
           ))}
         </div>
+
+     
+
+         {/* Quote Modal */}
+         <QuoteModal 
+          isOpen={isQuoteModalOpen} 
+          onClose={() => setIsQuoteModalOpen(false)} 
+        />
       </div>
     </section>
   );

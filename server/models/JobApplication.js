@@ -28,8 +28,15 @@ const jobApplicationSchema = new mongoose.Schema({
   coverLetter: {
     type: String
   },
-  resumeUrl: {
-    type: String
+  resume: {
+    filename: String,
+    originalName: String,
+    contentType: String,
+    size: {
+      type: Number,
+      max: 200000 // 200KB limit
+    },
+    data: Buffer // BSON binary data
   },
   status: {
     type: String,
@@ -39,13 +46,41 @@ const jobApplicationSchema = new mongoose.Schema({
   notes: {
     type: String
   },
+  // Reply tracking
+  replies: [{
+    message: {
+      type: String,
+      required: true
+    },
+    attachments: [{
+      filename: String,
+      originalName: String,
+      contentType: String,
+      size: {
+        type: Number,
+        max: 200000 // 200KB limit
+      },
+      data: Buffer // BSON binary data
+    }],
+    sentBy: {
+      type: String,
+      required: true
+    },
+    sentAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  lastRepliedAt: {
+    type: Date
+  },
   createdAt: {
     type: Date,
     default: Date.now
   },
   updatedAt: {
     type: Date,
-    default: Date.now
+      default: Date.now
   }
 });
 

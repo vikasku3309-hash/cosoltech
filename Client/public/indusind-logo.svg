@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <text x="10" y="25" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1E4B8B">
+    INDUSIND
+  </text>
+  <text x="10" y="45" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1E4B8B">
+    BANK
+  </text>
+  <rect x="150" y="15" width="30" height="30" fill="#1E4B8B"/>
+  <rect x="155" y="20" width="20" height="20" fill="white"/>
+</svg>

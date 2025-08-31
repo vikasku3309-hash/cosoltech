@@ -52,9 +52,25 @@ const Header = () => {
             animate={{ x: 0, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.6 }}
           >
-            <Facebook className="h-4 w-4 cursor-pointer hover:text-blue-200 transition-all duration-300 hover:scale-125" />
-            <Instagram className="h-4 w-4 cursor-pointer hover:text-pink-200 transition-all duration-300 hover:scale-125" />
-            <Twitter className="h-4 w-4 cursor-pointer hover:text-blue-200 transition-all duration-300 hover:scale-125" />
+           <div className="flex space-x-4">
+              <a 
+                href="https://facebook.com/cosoltech" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:scale-110 transition-transform"
+              >
+                <Facebook className="h-5 w-5 cursor-pointer hover:opacity-75" />
+              </a>
+              <a 
+                href="https://www.instagram.com/completesolutiontechnology?igsh=NGJldDRubXVsNGs=" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:scale-110 transition-transform"
+              >
+                <Instagram className="h-5 w-5 cursor-pointer hover:opacity-75" />
+              </a>
+              <Twitter className="h-5 w-5 cursor-pointer hover:opacity-75 hover:scale-110 transition-transform" />
+            </div>
           </motion.div>
         </div>
       </motion.div>

@@ -1,6 +1,8 @@
 import express from 'express';
 import Contact from '../models/Contact.js';
 import JobApplication from '../models/JobApplication.js';
+import File from '../models/File.js';
+import FileService from '../services/fileService.js';
 import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -140,6 +142,175 @@ router.get('/applications', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch applications' });
+  }
+});
+
+// File Management Routes
+
+// Get all files with pagination and search
+router.get('/files', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const search = req.query.search;
+    const userFilter = req.query.user;
+    
+    let query = {};
+    if (userFilter) {
+      query.uploadedBy = userFilter;
+    }
+    
+    let files;
+    let total;
+    
+    if (search) {
+      // Use search functionality
+      const searchResult = await FileService.searchFiles(search, userFilter, page, limit);
+      if (searchResult.success) {
+        files = searchResult.files;
+        total = searchResult.pagination.total;
+      } else {
+        throw new Error(searchResult.message);
+      }
+    } else {
+      // Regular pagination
+      files = await File.find(query)
+        .select('-data') // Exclude binary data for listing
+        .sort({ uploadedAt: -1 })
+        .limit(limit)
+        .skip((page - 1) * limit);
+      
+      total = await File.countDocuments(query);
+    }
+    
+    res.json({
+      files,
+      pagination: {
+        current: page,
+        pages: Math.ceil(total / limit),
+        total
+      }
+    });
+  } catch (error) {
+    console.error('Files fetch error:', error);
+    res.status(500).json({ message: 'Failed to fetch files' });
+  }
+});
+
+// Get file storage statistics
+router.get('/files/stats', async (req, res) => {
+  try {
+    // Overall storage stats
+    const overallStats = await File.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalFiles: { $sum: 1 },
+          totalSize: { $sum: '$size' },
+          avgSize: { $avg: '$size' }
+        }
+      }
+    ]);
+
+    // Files by user
+    const userStats = await File.aggregate([
+      {
+        $group: {
+          _id: '$uploadedBy',
+          fileCount: { $sum: 1 },
+          totalSize: { $sum: '$size' }
+        }
+      },
+      { $sort: { fileCount: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // Files by type
+    const typeStats = await File.aggregate([
+      {
+        $group: {
+          _id: '$contentType',
+          count: { $sum: 1 },
+          totalSize: { $sum: '$size' }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    res.json({
+      overall: overallStats[0] || { totalFiles: 0, totalSize: 0, avgSize: 0 },
+      byUser: userStats,
+      byType: typeStats
+    });
+  } catch (error) {
+    console.error('File stats error:', error);
+    res.status(500).json({ message: 'Failed to fetch file statistics' });
+  }
+});
+
+// Download file (admin can download any file)
+router.get('/files/:id/download', async (req, res) => {
+  try {
+    const result = await FileService.getFileById(req.params.id);
+    
+    if (!result.success) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+
+    const file = result.file;
+    
+    res.set({
+      'Content-Type': file.contentType,
+      'Content-Disposition': `attachment; filename="${file.originalName}"`,
+      'Content-Length': file.size
+    });
+
+    res.send(file.data);
+  } catch (error) {
+    console.error('File download error:', error);
+    res.status(500).json({ message: 'Failed to download file' });
+  }
+});
+
+// Delete file (admin can delete any file)
+router.delete('/files/:id', async (req, res) => {
+  try {
+    const file = await File.findById(req.params.id);
+    if (!file) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+
+    await File.findByIdAndDelete(req.params.id);
+    
+    res.json({ 
+      success: true, 
+      message: `File "${file.originalName}" deleted successfully` 
+    });
+  } catch (error) {
+    console.error('File deletion error:', error);
+    res.status(500).json({ message: 'Failed to delete file' });
+  }
+});
+
+// Bulk delete files
+router.delete('/files/bulk', async (req, res) => {
+  try {
+    const { fileIds } = req.body;
+    
+    if (!fileIds || !Array.isArray(fileIds)) {
+      return res.status(400).json({ message: 'File IDs array is required' });
+    }
+
+    const result = await File.deleteMany({ _id: { $in: fileIds } });
+    
+    res.json({ 
+      success: true, 
+      message: `${result.deletedCount} files deleted successfully`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('Bulk file deletion error:', error);
+    res.status(500).json({ message: 'Failed to delete files' });
   }
 });
 

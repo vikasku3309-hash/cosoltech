@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion } from "framer-motion";
 import { 
   Users, 
@@ -13,11 +15,19 @@ import {
   Eye,
   CheckCircle,
   AlertCircle,
-  Calendar
+  Calendar,
+  Reply,
+  MessageSquare,
+  Files,
+  Download,
+  Trash2,
+  Search,
+  Filter
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api, endpoints } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
+import ReplyModal from "@/components/ReplyModal";
 
 interface DashboardStats {
   totalContacts: number;
@@ -36,7 +46,20 @@ const AdminDashboard = () => {
   const [recentActivity, setRecentActivity] = useState<RecentActivity | null>(null);
   const [contacts, setContacts] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [files, setFiles] = useState([]);
+  const [fileStats, setFileStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [fileSearch, setFileSearch] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [replyModal, setReplyModal] = useState<{
+    isOpen: boolean;
+    type: 'contact' | 'application';
+    item: any;
+  }>({
+    isOpen: false,
+    type: 'contact',
+    item: null
+  });
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -62,6 +85,10 @@ const AdminDashboard = () => {
       setRecentActivity(dashboardResponse.data.recentActivity);
       setContacts(contactsResponse.data.contacts);
       setApplications(applicationsResponse.data.applications);
+      
+      // Fetch files and file stats
+      await fetchFiles();
+      await fetchFileStats();
     } catch (error: any) {
       if (error.response?.status === 401) {
         navigate('/admin/login');
@@ -117,6 +144,129 @@ const AdminDashboard = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const openReplyModal = (type: 'contact' | 'application', item: any) => {
+    setReplyModal({
+      isOpen: true,
+      type,
+      item
+    });
+  };
+
+  const closeReplyModal = () => {
+    setReplyModal({
+      isOpen: false,
+      type: 'contact',
+      item: null
+    });
+  };
+
+  const fetchFiles = async () => {
+    try {
+      const searchParam = fileSearch ? `&search=${encodeURIComponent(fileSearch)}` : '';
+      const response = await api.get(`${endpoints.admin.files}?limit=20${searchParam}`);
+      setFiles(response.data.files);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch files",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const fetchFileStats = async () => {
+    try {
+      const response = await api.get(endpoints.admin.fileStats);
+      setFileStats(response.data);
+    } catch (error) {
+      console.error('Failed to fetch file stats:', error);
+    }
+  };
+
+  const downloadFile = async (fileId: string, filename: string) => {
+    try {
+      const response = await api.get(`${endpoints.admin.files}/${fileId}/download`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Success",
+        description: "File downloaded successfully"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to download file",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deleteFile = async (fileId: string) => {
+    try {
+      await api.delete(`${endpoints.admin.files}/${fileId}`);
+      await fetchFiles(); // Refresh file list
+      setSelectedFiles(selectedFiles.filter(id => id !== fileId));
+      
+      toast({
+        title: "Success",
+        description: "File deleted successfully"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete file",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const bulkDeleteFiles = async () => {
+    try {
+      await api.delete(`${endpoints.admin.files}/bulk`, {
+        data: { fileIds: selectedFiles }
+      });
+      await fetchFiles(); // Refresh file list
+      setSelectedFiles([]);
+      
+      toast({
+        title: "Success",
+        description: `${selectedFiles.length} files deleted successfully`
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete files",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const toggleFileSelection = (fileId: string) => {
+    setSelectedFiles(prev => 
+      prev.includes(fileId) 
+        ? prev.filter(id => id !== fileId)
+        : [...prev, fileId]
+    );
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const getStatusBadgeVariant = (status: string) => {
@@ -244,6 +394,7 @@ const AdminDashboard = () => {
           <TabsList>
             <TabsTrigger value="contacts">Contact Messages</TabsTrigger>
             <TabsTrigger value="applications">Job Applications</TabsTrigger>
+            <TabsTrigger value="files">File Management</TabsTrigger>
           </TabsList>
 
           <TabsContent value="contacts">
@@ -274,6 +425,21 @@ const AdminDashboard = () => {
                       </div>
                       <p className="text-sm font-medium mb-2">{contact.subject}</p>
                       <p className="text-sm text-gray-600 mb-3">{contact.message}</p>
+                      
+                      {/* Show reply history if any */}
+                      {contact.replies && contact.replies.length > 0 && (
+                        <div className="mb-3 p-3 bg-blue-50 rounded border-l-4 border-blue-400">
+                          <p className="text-sm font-medium text-blue-800 mb-2">
+                            Reply History ({contact.replies.length} replies)
+                          </p>
+                          {contact.replies.slice(-2).map((reply: any, index: number) => (
+                            <div key={index} className="text-sm text-blue-700 mb-1">
+                              <span className="font-medium">{reply.sentAt ? new Date(reply.sentAt).toLocaleDateString() : 'Unknown'}:</span> {reply.message.substring(0, 100)}...
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-gray-400 flex items-center">
                           <Calendar className="h-3 w-3 mr-1" />
@@ -286,6 +452,14 @@ const AdminDashboard = () => {
                             onClick={() => updateContactStatus(contact._id, 'read')}
                           >
                             Mark as Read
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openReplyModal('contact', contact)}
+                          >
+                            <Reply className="h-4 w-4 mr-1" />
+                            Reply
                           </Button>
                           <Button
                             size="sm"
@@ -336,6 +510,21 @@ const AdminDashboard = () => {
                       {app.coverLetter && (
                         <p className="text-sm text-gray-600 mb-3">{app.coverLetter}</p>
                       )}
+                      
+                      {/* Show reply history if any */}
+                      {app.replies && app.replies.length > 0 && (
+                        <div className="mb-3 p-3 bg-green-50 rounded border-l-4 border-green-400">
+                          <p className="text-sm font-medium text-green-800 mb-2">
+                            Response History ({app.replies.length} responses)
+                          </p>
+                          {app.replies.slice(-2).map((reply: any, index: number) => (
+                            <div key={index} className="text-sm text-green-700 mb-1">
+                              <span className="font-medium">{reply.sentAt ? new Date(reply.sentAt).toLocaleDateString() : 'Unknown'}:</span> {reply.message.substring(0, 100)}...
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-gray-400 flex items-center">
                           <Calendar className="h-3 w-3 mr-1" />
@@ -351,6 +540,14 @@ const AdminDashboard = () => {
                           </Button>
                           <Button
                             size="sm"
+                            variant="outline"
+                            onClick={() => openReplyModal('application', app)}
+                          >
+                            <MessageSquare className="h-4 w-4 mr-1" />
+                            Respond
+                          </Button>
+                          <Button
+                            size="sm"
                             onClick={() => updateApplicationStatus(app._id, 'shortlisted')}
                           >
                             Shortlist
@@ -363,8 +560,177 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="files">
+            <div className="space-y-4">
+              {/* File Stats Cards */}
+              {fileStats && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Total Files</CardTitle>
+                      <Files className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{fileStats.overall.totalFiles}</div>
+                      <p className="text-xs text-muted-foreground">
+                        {formatFileSize(fileStats.overall.totalSize)} total storage
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Average Size</CardTitle>
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{formatFileSize(fileStats.overall.avgSize || 0)}</div>
+                      <p className="text-xs text-muted-foreground">
+                        Per file
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Selected</CardTitle>
+                      <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{selectedFiles.length}</div>
+                      <p className="text-xs text-muted-foreground">
+                        Files selected
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* File Management */}
+              <Card>
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle>File Management</CardTitle>
+                      <CardDescription>
+                        Manage uploaded files, download and delete as needed
+                      </CardDescription>
+                    </div>
+                    {selectedFiles.length > 0 && (
+                      <Button 
+                        variant="destructive" 
+                        size="sm"
+                        onClick={bulkDeleteFiles}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Selected ({selectedFiles.length})
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {/* Search and Filters */}
+                  <div className="flex gap-4 mb-4">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search files..."
+                          value={fileSearch}
+                          onChange={(e) => setFileSearch(e.target.value)}
+                          className="pl-8"
+                        />
+                      </div>
+                    </div>
+                    <Button onClick={fetchFiles} variant="outline">
+                      <Filter className="h-4 w-4 mr-2" />
+                      Search
+                    </Button>
+                  </div>
+
+                  {/* Files List */}
+                  <div className="space-y-2">
+                    {files.map((file: any) => (
+                      <motion.div
+                        key={file._id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="border rounded-lg p-4 hover:bg-gray-50"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedFiles.includes(file._id)}
+                              onChange={() => toggleFileSelection(file._id)}
+                              className="w-4 h-4"
+                            />
+                            <div>
+                              <h4 className="font-medium">{file.originalName}</h4>
+                              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                <span>{formatFileSize(file.size)}</span>
+                                <span>{file.contentType}</span>
+                                <span>By: {file.uploadedBy}</span>
+                                <span>{new Date(file.uploadedAt).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => downloadFile(file._id, file.originalName)}
+                            >
+                              <Download className="h-4 w-4 mr-1" />
+                              Download
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => deleteFile(file._id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                        {file.description && (
+                          <p className="text-sm text-gray-600 mt-2 ml-8">{file.description}</p>
+                        )}
+                        {file.tags && file.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2 ml-8">
+                            {file.tags.map((tag: string, index: number) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </motion.div>
+                    ))}
+                    {files.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <Files className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No files found</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
+
+      {/* Reply Modal - Only render when needed */}
+      {replyModal.isOpen && replyModal.item && (
+        <ReplyModal
+          isOpen={replyModal.isOpen}
+          onClose={closeReplyModal}
+          type={replyModal.type}
+          item={replyModal.item}
+          onSuccess={fetchDashboardData}
+        />
+      )}
     </div>
   );
 };
