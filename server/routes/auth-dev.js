@@ -23,24 +23,39 @@ const validateLogin = [
 // Admin login (development mock)
 router.post('/login', validateLogin, async (req, res) => {
   try {
+    // Get JWT_SECRET with fallback for production
+    const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key-change-in-production';
+    if (!process.env.JWT_SECRET) {
+      console.warn('JWT_SECRET environment variable is not set, using fallback');
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ 
+        message: 'Validation error',
+        errors: errors.array() 
+      });
     }
 
     const { username, password } = req.body;
+    
+    console.log('Login attempt for username:', username);
 
-    // Simple mock authentication
-    if (username !== mockAdmin.username || password !== mockAdmin.password) {
+    // Simple mock authentication - support multiple passwords for compatibility
+    const validPasswords = ['admin123', 'Viekaysh@123'];
+    if (username !== mockAdmin.username || !validPasswords.includes(password)) {
+      console.log('Invalid credentials for username:', username);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Generate JWT
     const token = jwt.sign(
       { adminId: mockAdmin._id, username: mockAdmin.username, role: mockAdmin.role },
-      process.env.JWT_SECRET,
+      jwtSecret,
       { expiresIn: '24h' }
     );
+
+    console.log('Login successful for admin:', username);
 
     res.json({
       token,
@@ -53,19 +68,28 @@ router.post('/login', validateLogin, async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
 // Get current admin info (mock)
 router.get('/me', (req, res) => {
   try {
+    // Get JWT_SECRET with fallback for production
+    const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key-change-in-production';
+    if (!process.env.JWT_SECRET) {
+      console.warn('JWT_SECRET environment variable is not set, using fallback');
+    }
+
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) {
       return res.status(401).json({ message: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, jwtSecret);
     res.json({
       _id: decoded.adminId,
       username: decoded.username,
@@ -74,6 +98,7 @@ router.get('/me', (req, res) => {
       isActive: true
     });
   } catch (error) {
+    console.error('Token verification error:', error);
     res.status(401).json({ message: 'Invalid token' });
   }
 });
