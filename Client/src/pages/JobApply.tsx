@@ -29,18 +29,45 @@ const JobApply = () => {
     setIsSubmitting(true);
 
     try {
-      // For now, we'll submit without file upload
-      // In production, you'd need to implement file upload to cloud storage
-      const submitData = {
-        fullName: formData.fullName,
-        email: formData.email,
-        phone: formData.phone,
-        position: formData.position,
-        experience: formData.experience,
-        coverLetter: formData.coverLetter
-      };
+      // Validate required fields
+      if (!formData.position) {
+        toast({
+          title: "Validation Error",
+          description: "Please select a position",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (!formData.experience) {
+        toast({
+          title: "Validation Error", 
+          description: "Please select your experience level",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
-      await api.post(endpoints.jobApplications.submit, submitData);
+      // Prepare form data with file upload
+      const formDataToSend = new FormData();
+      formDataToSend.append('fullName', formData.fullName);
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('phone', formData.phone);
+      formDataToSend.append('position', formData.position);
+      formDataToSend.append('experience', formData.experience);
+      formDataToSend.append('coverLetter', formData.coverLetter);
+      
+      if (formData.resume) {
+        formDataToSend.append('resume', formData.resume);
+      }
+
+      await api.post(endpoints.jobApplications.submit, formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       
       toast({
         title: "Application Submitted!",
@@ -143,7 +170,7 @@ const JobApply = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="position">Position Applied For *</Label>
-                  <Select onValueChange={(value) => setFormData({...formData, position: value})}>
+                  <Select onValueChange={(value) => setFormData({...formData, position: value})} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select position" />
                     </SelectTrigger>
@@ -159,8 +186,8 @@ const JobApply = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="experience">Years of Experience</Label>
-                <Select onValueChange={(value) => setFormData({...formData, experience: value})}>
+                <Label htmlFor="experience">Years of Experience *</Label>
+                <Select onValueChange={(value) => setFormData({...formData, experience: value})} required>
                   <SelectTrigger>
                     <SelectValue placeholder="Select experience level" />
                   </SelectTrigger>

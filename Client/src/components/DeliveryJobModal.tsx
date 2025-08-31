@@ -33,21 +33,38 @@ const DeliveryJobModal = ({ isOpen, onClose }: DeliveryJobModalProps) => {
     setIsSubmitting(true);
 
     try {
+      // Validate required fields
+      if (!formData.experience) {
+        toast({
+          title: "Validation Error",
+          description: "Please select your experience level",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       // Sanitize phone number for production server compatibility
       const sanitizedPhone = formData.phone ? formData.phone.replace(/[^\d]/g, '') : '';
       
-      // For now, we'll submit without file upload
-      // In production, you'd need to implement file upload to cloud storage
-      const submitData = {
-        fullName: formData.fullName,
-        email: formData.email,
-        phone: sanitizedPhone,
-        position: formData.position,
-        experience: formData.experience,
-        coverLetter: formData.coverLetter
-      };
+      // Prepare form data with file upload
+      const formDataToSend = new FormData();
+      formDataToSend.append('fullName', formData.fullName);
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('phone', sanitizedPhone);
+      formDataToSend.append('position', formData.position);
+      formDataToSend.append('experience', formData.experience);
+      formDataToSend.append('coverLetter', formData.coverLetter);
+      
+      if (formData.resume) {
+        formDataToSend.append('resume', formData.resume);
+      }
 
-      await api.post(endpoints.jobApplications.submit, submitData);
+      await api.post(endpoints.jobApplications.submit, formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       
       toast({
         title: "Application Submitted!",
@@ -169,8 +186,8 @@ const DeliveryJobModal = ({ isOpen, onClose }: DeliveryJobModalProps) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="experience">Experience Level</Label>
-                  <Select onValueChange={(value) => setFormData({...formData, experience: value})}>
+                  <Label htmlFor="experience">Experience Level *</Label>
+                  <Select onValueChange={(value) => setFormData({...formData, experience: value})} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select experience level" />
                     </SelectTrigger>

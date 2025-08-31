@@ -1,65 +1,54 @@
 import nodemailer from 'nodemailer';
 
-// Create a single transporter instance. This is more efficient than creating
-// a new one for every email.
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  // `secure` should be true if you're using port 465, false for others.
-  // This makes the logic a bit more robust.
-  secure: parseInt(process.env.EMAIL_PORT, 10) === 465,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// Create transporter
+const createTransporter = () => {
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    secure: false, // true for 465, false for other ports
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS
+    }
+  });
+};
 
-// Private helper to centralize sending logic and error handling
-const sendMailWrapper = async (mailOptions, { successMessage, errorMessage }) => {
+export const sendEmailNotification = async ({ to, subject, html }) => {
   try {
+    const transporter = createTransporter();
+    
+    const mailOptions = {
+      from: {
+        name: 'Complete Solution Technology',
+        address: process.env.EMAIL_USER
+      },
+      to,
+      subject,
+      html
+    };
+
     const result = await transporter.sendMail(mailOptions);
-    console.log(successMessage, result.messageId);
+    console.log('Email sent successfully:', result.messageId);
     return result;
   } catch (error) {
-    console.error(errorMessage, error);
+    console.error('Email sending error:', error);
     throw error;
   }
 };
 
-// Private helper to format attachments consistently
-const formatAttachments = (attachments = []) =>
-  attachments.map((attachment) => ({
-    filename: attachment.filename,
-    path: attachment.url,
-    contentType: attachment.contentType,
-  }));
-
-const FROM_CONFIG = {
-  name: 'Complete Solution Technology',
-  address: process.env.EMAIL_USER,
-};
-
-export const sendEmailNotification = async ({ to, subject, html }) => {
-  const mailOptions = {
-    from: FROM_CONFIG,
-    to,
-    subject,
-    html,
-  };
-
-  return sendMailWrapper(mailOptions, {
-    successMessage: 'Email sent successfully:',
-    errorMessage: 'Email sending error:',
-  });
-};
-
 // Send reply email with attachments
 export const sendReplyEmail = async ({ to, subject, message, attachments = [], replyTo = null }) => {
-  const mailOptions = {
-    from: FROM_CONFIG,
-    to,
-    subject: `Re: ${subject}`,
-    html: `
+  try {
+    const transporter = createTransporter();
+    
+    const mailOptions = {
+      from: {
+        name: 'Complete Solution Technology',
+        address: process.env.EMAIL_USER
+      },
+      to,
+      subject: `Re: ${subject}`,
+      html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
             <h2 style="color: #333; margin: 0;">Complete Solution Technology</h2>
@@ -70,9 +59,7 @@ export const sendReplyEmail = async ({ to, subject, message, attachments = [], r
             ${message}
           </div>
           
-          ${
-            replyTo
-              ? `
+          ${replyTo ? `
             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #007bff;">
               <p style="margin: 0; color: #666; font-size: 14px;">
                 <strong>Original Message:</strong><br>
@@ -87,36 +74,42 @@ export const sendReplyEmail = async ({ to, subject, message, attachments = [], r
           </div>
         </div>
       `,
-    attachments: formatAttachments(attachments),
-  };
+      attachments: attachments.map(attachment => ({
+        filename: attachment.filename,
+        path: attachment.url,
+        contentType: attachment.contentType
+      }))
+    };
 
-  return sendMailWrapper(mailOptions, {
-    successMessage: 'Reply email sent successfully:',
-    errorMessage: 'Reply email sending error:',
-  });
+    const result = await transporter.sendMail(mailOptions);
+    console.log('Reply email sent successfully:', result.messageId);
+    return result;
+  } catch (error) {
+    console.error('Reply email sending error:', error);
+    throw error;
+  }
 };
 
 // Send job application response
-export const sendJobApplicationResponse = async ({
-  to,
-  fullName,
-  position,
-  message,
-  attachments = [],
-  status,
-}) => {
-  const statusMessages = {
-    shortlisted: 'Congratulations! Your application has been shortlisted.',
-    rejected: 'Thank you for your interest in the position.',
-    hired: 'Congratulations! You have been selected for the position.',
-    reviewing: 'Your application is currently under review.',
-  };
-
-  const mailOptions = {
-    from: FROM_CONFIG,
-    to,
-    subject: `Application Update - ${position}`,
-    html: `
+export const sendJobApplicationResponse = async ({ to, fullName, position, message, attachments = [], status }) => {
+  try {
+    const transporter = createTransporter();
+    
+    const statusMessages = {
+      'shortlisted': 'Congratulations! Your application has been shortlisted.',
+      'rejected': 'Thank you for your interest in the position.',
+      'hired': 'Congratulations! You have been selected for the position.',
+      'reviewing': 'Your application is currently under review.'
+    };
+    
+    const mailOptions = {
+      from: {
+        name: 'Complete Solution Technology',
+        address: process.env.EMAIL_USER
+      },
+      to,
+      subject: `Application Update - ${position}`,
+      html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
             <h2 style="color: #333; margin: 0;">Complete Solution Technology</h2>
@@ -126,10 +119,7 @@ export const sendJobApplicationResponse = async ({
           <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;">
             <p>Dear ${fullName},</p>
             
-            <p>${
-              statusMessages[status] ||
-              'We have an update regarding your job application.'
-            }</p>
+            <p>${statusMessages[status] || 'We have an update regarding your job application.'}</p>
             
             ${message ? `<p>${message}</p>` : ''}
             
@@ -143,11 +133,18 @@ export const sendJobApplicationResponse = async ({
           </div>
         </div>
       `,
-    attachments: formatAttachments(attachments),
-  };
+      attachments: attachments.map(attachment => ({
+        filename: attachment.filename,
+        path: attachment.url,
+        contentType: attachment.contentType
+      }))
+    };
 
-  return sendMailWrapper(mailOptions, {
-    successMessage: 'Job application response sent successfully:',
-    errorMessage: 'Job application response sending error:',
-  });
+    const result = await transporter.sendMail(mailOptions);
+    console.log('Job application response sent successfully:', result.messageId);
+    return result;
+  } catch (error) {
+    console.error('Job application response sending error:', error);
+    throw error;
+  }
 };

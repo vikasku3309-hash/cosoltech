@@ -3,12 +3,12 @@ import { body, validationResult } from 'express-validator';
 import JobApplication from '../models/JobApplication.js';
 import { sendJobApplicationResponse } from '../utils/emailService.js';
 import { authenticateAdmin } from '../middleware/auth.js';
-import { uploadMultiple, uploadSingle, handleUploadError } from '../middleware/fileUpload.js';
+import { uploadMultiple, uploadSingle, uploadAnySingle, handleUploadError } from '../middleware/fileUpload.js';
 
 const router = express.Router();
 
 // Submit job application
-router.post('/submit', uploadSingle, handleUploadError, [
+router.post('/submit', uploadAnySingle, handleUploadError, [
   body('fullName').trim().isLength({ min: 2 }).withMessage('Full name must be at least 2 characters long'),
   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
   body('phone').trim().matches(/[\d\+\-\s\(\)]{10,}/).withMessage('Please provide a valid phone number'),
@@ -37,14 +37,18 @@ router.post('/submit', uploadSingle, handleUploadError, [
 
     // Process resume file if uploaded
     let resume = null;
-    if (req.file && req.file.buffer.length <= 200000) { // 200KB limit
-      resume = {
-        filename: req.file.originalname,
-        originalName: req.file.originalname,
-        contentType: req.file.mimetype,
-        size: req.file.buffer.length,
-        data: req.file.buffer
-      };
+    if (req.files && req.files.length > 0) {
+      // Find the resume file
+      const resumeFile = req.files.find(file => file.fieldname === 'resume');
+      if (resumeFile && resumeFile.buffer.length <= 200000) { // 200KB limit
+        resume = {
+          filename: resumeFile.originalname,
+          originalName: resumeFile.originalname,
+          contentType: resumeFile.mimetype,
+          size: resumeFile.buffer.length,
+          data: resumeFile.buffer
+        };
+      }
     }
 
     const application = new JobApplication({

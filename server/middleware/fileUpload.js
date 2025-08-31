@@ -37,8 +37,11 @@ const upload = multer({
   fileFilter: fileFilter
 });
 
-// Middleware for single file upload
-export const uploadSingle = upload.single('file');
+// Middleware for single file upload (resume)
+export const uploadSingle = upload.single('resume');
+
+// Alternative middleware that accepts any single file
+export const uploadAnySingle = upload.any();
 
 // Middleware for multiple file upload
 export const uploadMultiple = upload.array('files', 5);

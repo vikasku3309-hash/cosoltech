@@ -3,7 +3,7 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
   (window.location.hostname === 'cosoltech.in' || window.location.hostname === 'www.cosoltech.in') 
     ? 'https://backend.cosoltech.in' 
-    : 'http://localhost:5000';
+    : 'http://localhost:5001';
 
 // Create axios instance with default config
 export const api = axios.create({

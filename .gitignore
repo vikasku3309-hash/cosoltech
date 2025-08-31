@@ -24,3 +24,11 @@ dist-ssr
 *.sw?
 server/.env.production
 PRODUCTION_FIXES_SUMMARY.md
+server/test-email-simple.js
+server/test-email.js
+server/test-form-submission.js
+Client/test-contact-form.html
+server/check-file-upload.js
+server/test-frontend-forms.js
+server/test-job-application.js
+server/test-resume.txt
