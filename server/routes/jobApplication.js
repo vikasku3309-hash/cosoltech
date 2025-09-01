@@ -242,4 +242,53 @@ router.post('/:id/reply', authenticateAdmin, uploadMultiple, handleUploadError, 
   }
 });
 
+// Delete job application (admin only) - also deletes associated resume
+router.delete('/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const application = await JobApplication.findByIdAndDelete(req.params.id);
+    
+    if (!application) {
+      return res.status(404).json({ message: 'Job application not found' });
+    }
+
+    // The resume is embedded in the application document, so it's automatically deleted
+    res.json({ 
+      success: true,
+      message: 'Job application and associated resume deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete application error:', error);
+    res.status(500).json({ message: 'Failed to delete job application' });
+  }
+});
+
+// Delete multiple job applications (admin only)
+router.post('/delete-multiple', authenticateAdmin, [
+  body('ids').isArray().withMessage('IDs must be an array'),
+  body('ids.*').isMongoId().withMessage('Invalid application ID')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        message: 'Validation failed', 
+        errors: errors.array() 
+      });
+    }
+
+    const { ids } = req.body;
+    
+    const result = await JobApplication.deleteMany({ _id: { $in: ids } });
+    
+    res.json({ 
+      success: true,
+      message: `${result.deletedCount} application(s) and their resumes deleted successfully`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('Delete multiple applications error:', error);
+    res.status(500).json({ message: 'Failed to delete job applications' });
+  }
+});
+
 export default router;

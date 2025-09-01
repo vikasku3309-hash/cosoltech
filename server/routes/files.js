@@ -218,4 +218,85 @@ router.get('/stats/storage', authenticateAdmin, async (req, res) => {
   }
 });
 
+// Get all resumes from job applications
+router.get('/resumes', authenticateAdmin, async (req, res) => {
+  try {
+    const JobApplication = (await import('../models/JobApplication.js')).default;
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+    const skip = (page - 1) * limit;
+
+    // Find all job applications with resumes
+    const applications = await JobApplication.find({ 
+      'resume.data': { $exists: true } 
+    })
+    .select('fullName email position createdAt resume')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+    const total = await JobApplication.countDocuments({ 
+      'resume.data': { $exists: true } 
+    });
+
+    // Format resumes for file management display
+    const resumes = applications.map(app => ({
+      _id: app._id,
+      filename: app.resume.filename || `${app.fullName.replace(/\s+/g, '_')}_resume.pdf`,
+      originalName: app.resume.originalName || app.resume.filename,
+      contentType: app.resume.contentType || 'application/pdf',
+      size: app.resume.size,
+      uploadedBy: app.email,
+      applicantName: app.fullName,
+      position: app.position,
+      uploadedAt: app.createdAt,
+      type: 'resume',
+      source: 'job_application'
+    }));
+
+    res.json({
+      success: true,
+      files: resumes,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    console.error('Get resumes error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch resumes'
+    });
+  }
+});
+
+// Download resume from job application
+router.get('/resume/:applicationId', authenticateAdmin, async (req, res) => {
+  try {
+    const JobApplication = (await import('../models/JobApplication.js')).default;
+    const application = await JobApplication.findById(req.params.applicationId);
+    
+    if (!application || !application.resume || !application.resume.data) {
+      return res.status(404).json({
+        success: false,
+        message: 'Resume not found'
+      });
+    }
+
+    res.set({
+      'Content-Type': application.resume.contentType || 'application/pdf',
+      'Content-Disposition': `attachment; filename="${application.resume.filename || 'resume.pdf'}"`,
+      'Content-Length': application.resume.size
+    });
+
+    res.send(application.resume.data);
+  } catch (error) {
+    console.error('Download resume error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to download resume'
+    });
+  }
+});
+
 export default router;

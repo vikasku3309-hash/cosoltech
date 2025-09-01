@@ -218,4 +218,52 @@ router.post('/:id/reply', authenticateAdmin, uploadMultiple, handleUploadError, 
   }
 });
 
+// Delete contact (admin only)
+router.delete('/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const contact = await Contact.findByIdAndDelete(req.params.id);
+    
+    if (!contact) {
+      return res.status(404).json({ message: 'Contact not found' });
+    }
+
+    res.json({ 
+      success: true,
+      message: 'Contact deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete contact error:', error);
+    res.status(500).json({ message: 'Failed to delete contact' });
+  }
+});
+
+// Delete multiple contacts (admin only)
+router.post('/delete-multiple', authenticateAdmin, [
+  body('ids').isArray().withMessage('IDs must be an array'),
+  body('ids.*').isMongoId().withMessage('Invalid contact ID')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        message: 'Validation failed', 
+        errors: errors.array() 
+      });
+    }
+
+    const { ids } = req.body;
+    
+    const result = await Contact.deleteMany({ _id: { $in: ids } });
+    
+    res.json({ 
+      success: true,
+      message: `${result.deletedCount} contact(s) deleted successfully`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('Delete multiple contacts error:', error);
+    res.status(500).json({ message: 'Failed to delete contacts' });
+  }
+});
+
 export default router;
