@@ -14,21 +14,21 @@ dotenv.config();
 
 // Main server initialization function
 async function initializeServer() {
-  // Import auth routes based on environment
+  // Import auth routes - always use main auth.js
   let authRoutes;
   try {
-    if (process.env.NODE_ENV === 'production') {
-      const authModule = await import('./routes/auth-dev.js');
-      authRoutes = authModule.default;
-    } else {
-      const authModule = await import('./routes/auth.js');
-      authRoutes = authModule.default;
-    }
-  } catch (error) {
-    console.error('Error importing auth routes:', error);
-    // Fallback to main auth routes
     const authModule = await import('./routes/auth.js');
     authRoutes = authModule.default;
+  } catch (error) {
+    console.error('Error importing auth routes:', error);
+    // Try fallback to auth-dev if main auth fails
+    try {
+      const authModule = await import('./routes/auth-dev.js');
+      authRoutes = authModule.default;
+    } catch (fallbackError) {
+      console.error('Failed to import any auth routes:', fallbackError);
+      throw new Error('Unable to load authentication routes');
+    }
   }
 
   const app = express();
