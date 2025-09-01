@@ -737,9 +737,9 @@ const AdminDashboard = () => {
                       <Files className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{fileStats.overall.totalFiles}</div>
+                      <div className="text-2xl font-bold">{fileStats?.overall?.totalFiles || 0}</div>
                       <p className="text-xs text-muted-foreground">
-                        {formatFileSize(fileStats.overall.totalSize)} total storage
+                        {formatFileSize(fileStats?.overall?.totalSize || 0)} total storage
                       </p>
                     </CardContent>
                   </Card>
@@ -749,7 +749,7 @@ const AdminDashboard = () => {
                       <FileText className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold">{formatFileSize(fileStats.overall.avgSize || 0)}</div>
+                      <div className="text-2xl font-bold">{formatFileSize(fileStats?.overall?.avgSize || 0)}</div>
                       <p className="text-xs text-muted-foreground">
                         Per file
                       </p>
