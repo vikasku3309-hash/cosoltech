@@ -47,6 +47,7 @@ const AdminDashboard = () => {
   const [contacts, setContacts] = useState([]);
   const [applications, setApplications] = useState([]);
   const [files, setFiles] = useState([]);
+  const [resumes, setResumes] = useState([]);
   const [fileStats, setFileStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [fileSearch, setFileSearch] = useState('');
@@ -75,19 +76,30 @@ const AdminDashboard = () => {
         return;
       }
 
-      const [dashboardResponse, contactsResponse, applicationsResponse] = await Promise.all([
-        api.get(endpoints.admin.dashboardStats),
-        api.get(endpoints.admin.contacts + '?limit=20'),
-        api.get(endpoints.admin.applications + '?limit=20')
+      const [contactsResponse, applicationsResponse] = await Promise.all([
+        api.get(endpoints.contact.getAll + '?limit=20'),
+        api.get(endpoints.jobApplications.getAll + '?limit=20')
       ]);
 
-      setStats(dashboardResponse.data.stats);
-      setRecentActivity(dashboardResponse.data.recentActivity);
+      // Calculate stats from the data
+      const stats = {
+        totalContacts: contactsResponse.data.total || contactsResponse.data.contacts?.length || 0,
+        newContacts: contactsResponse.data.contacts?.filter((c: any) => c.status === 'new').length || 0,
+        totalApplications: applicationsResponse.data.total || applicationsResponse.data.applications?.length || 0,
+        pendingApplications: applicationsResponse.data.applications?.filter((a: any) => a.status === 'pending').length || 0
+      };
+
+      setStats(stats);
+      setRecentActivity({
+        contacts: contactsResponse.data.contacts || [],
+        applications: applicationsResponse.data.applications || []
+      });
       setContacts(contactsResponse.data.contacts);
       setApplications(applicationsResponse.data.applications);
       
-      // Fetch files and file stats
+      // Fetch files, resumes and file stats
       await fetchFiles();
+      await fetchResumes();
       await fetchFileStats();
     } catch (error: any) {
       if (error.response?.status === 401) {
@@ -165,29 +177,103 @@ const AdminDashboard = () => {
   const fetchFiles = async () => {
     try {
       const searchParam = fileSearch ? `&search=${encodeURIComponent(fileSearch)}` : '';
-      const response = await api.get(`${endpoints.admin.files}?limit=20${searchParam}`);
-      setFiles(response.data.files);
+      const response = await api.get(`${endpoints.files.getAll}?limit=20${searchParam}`);
+      setFiles(response.data.files || []);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch files",
-        variant: "destructive"
-      });
+      console.error('Failed to fetch files:', error);
+      setFiles([]);
+    }
+  };
+
+  const fetchResumes = async () => {
+    try {
+      const response = await api.get(`${endpoints.files.resumes}?limit=20`);
+      setResumes(response.data.files || []);
+    } catch (error) {
+      console.error('Failed to fetch resumes:', error);
+      setResumes([]);
     }
   };
 
   const fetchFileStats = async () => {
     try {
-      const response = await api.get(endpoints.admin.fileStats);
+      const response = await api.get(endpoints.files.stats);
       setFileStats(response.data);
     } catch (error) {
       console.error('Failed to fetch file stats:', error);
     }
   };
 
+  const deleteContact = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this contact?')) return;
+    
+    try {
+      await api.delete(endpoints.contact.delete(id));
+      await fetchDashboardData();
+      toast({
+        title: "Success",
+        description: "Contact deleted successfully"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete contact",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deleteApplication = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this application and its resume?')) return;
+    
+    try {
+      await api.delete(endpoints.jobApplications.delete(id));
+      await fetchDashboardData();
+      await fetchResumes();
+      toast({
+        title: "Success",
+        description: "Application and resume deleted successfully"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete application",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const downloadResume = async (applicationId: string, filename: string) => {
+    try {
+      const response = await api.get(endpoints.files.downloadResume(applicationId), {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Success",
+        description: "Resume downloaded successfully"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to download resume",
+        variant: "destructive"
+      });
+    }
+  };
+
   const downloadFile = async (fileId: string, filename: string) => {
     try {
-      const response = await api.get(`${endpoints.admin.files}/${fileId}/download`, {
+      const response = await api.get(endpoints.files.download(fileId), {
         responseType: 'blob'
       });
       
@@ -215,7 +301,7 @@ const AdminDashboard = () => {
 
   const deleteFile = async (fileId: string) => {
     try {
-      await api.delete(`${endpoints.admin.files}/${fileId}`);
+      await api.delete(endpoints.files.delete(fileId));
       await fetchFiles(); // Refresh file list
       setSelectedFiles(selectedFiles.filter(id => id !== fileId));
       
@@ -394,6 +480,7 @@ const AdminDashboard = () => {
           <TabsList>
             <TabsTrigger value="contacts">Contact Messages</TabsTrigger>
             <TabsTrigger value="applications">Job Applications</TabsTrigger>
+            <TabsTrigger value="resumes">Resumes</TabsTrigger>
             <TabsTrigger value="files">File Management</TabsTrigger>
           </TabsList>
 
@@ -467,6 +554,13 @@ const AdminDashboard = () => {
                           >
                             Mark as Replied
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteContact(contact._id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     </motion.div>
@@ -510,6 +604,18 @@ const AdminDashboard = () => {
                       {app.coverLetter && (
                         <p className="text-sm text-gray-600 mb-3">{app.coverLetter}</p>
                       )}
+                      {app.resume && (
+                        <div className="mb-3">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => downloadResume(app._id, app.resume.filename || `${app.fullName}_resume.pdf`)}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            Download Resume
+                          </Button>
+                        </div>
+                      )}
                       
                       {/* Show reply history if any */}
                       {app.replies && app.replies.length > 0 && (
@@ -552,10 +658,69 @@ const AdminDashboard = () => {
                           >
                             Shortlist
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => deleteApplication(app._id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     </motion.div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="resumes">
+            <Card>
+              <CardHeader>
+                <CardTitle>Resume Management</CardTitle>
+                <CardDescription>
+                  View and download resumes from job applications
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {resumes.map((resume: any) => (
+                    <motion.div
+                      key={resume._id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="border rounded-lg p-4 hover:bg-gray-50"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-semibold">{resume.applicantName}</h4>
+                          <p className="text-sm text-gray-500">Position: {resume.position}</p>
+                          <p className="text-sm text-gray-500">Email: {resume.uploadedBy}</p>
+                          <div className="flex items-center space-x-4 text-sm text-gray-500 mt-2">
+                            <span>{formatFileSize(resume.size)}</span>
+                            <span>{resume.contentType}</span>
+                            <span>{new Date(resume.uploadedAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <div className="space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => downloadResume(resume._id, resume.filename)}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            Download
+                          </Button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                  {resumes.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No resumes found</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

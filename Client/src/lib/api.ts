@@ -52,6 +52,8 @@ export const endpoints = {
     getById: (id: string) => `/contact/${id}`,
     updateStatus: (id: string) => `/contact/${id}/status`,
     reply: (id: string) => `/contact/${id}/reply`,
+    delete: (id: string) => `/contact/${id}`,
+    deleteMultiple: '/contact/delete-multiple',
   },
   // Job application endpoints
   jobApplications: {
@@ -60,6 +62,18 @@ export const endpoints = {
     getById: (id: string) => `/job-applications/${id}`,
     updateStatus: (id: string) => `/job-applications/${id}/status`,
     reply: (id: string) => `/job-applications/${id}/reply`,
+    delete: (id: string) => `/job-applications/${id}`,
+    deleteMultiple: '/job-applications/delete-multiple',
+  },
+  // Files and resumes
+  files: {
+    getAll: '/files/my-files',
+    resumes: '/files/resumes',
+    download: (id: string) => `/files/download/${id}`,
+    downloadResume: (applicationId: string) => `/files/resume/${applicationId}`,
+    delete: (id: string) => `/files/${id}`,
+    bulkDelete: '/files/bulk-delete',
+    stats: '/files/stats/storage',
   },
   // Admin endpoints
   admin: {
