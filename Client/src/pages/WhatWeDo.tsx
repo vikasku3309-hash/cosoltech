@@ -101,9 +101,9 @@ const WhatWeDo = () => {
   ];
 
   const achievements = [
-    { number: "500+", label: "Successful Projects" },
+    { number: "20+", label: "Successful Projects" },
     { number: "98%", label: "Client Satisfaction" },
-    { number: "5+", label: "Years Experience" },
+    { number: "10+", label: "Years Experience" },
     { number: "50+", label: "Team Members" }
   ];
 
